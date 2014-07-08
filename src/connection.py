@@ -13,14 +13,54 @@ except:
 
 
 class ConnectionParser(object):
+    MAX_LENGTH = 10000
     def __init__(self):
-        pass
+        self._sfd = None
 
     def attach_connection(self, connection):
-        pass
+        self._sfd = connection.sock.makefile('rb')
 
     def disattach_connection(self):
-        pass
+        if self._sfd:
+            self._sfd.close()
+            sefl._sfd = None
+
+    def read(self, length=None):
+        try:
+            if length is not None:
+                if length > self.MAX_LENGTH:
+                    try:
+                        buf = StringIO()
+                        while length> 0:
+                            read_length = min(self.MAX_LENGTH, bytes_length)
+                            buf.write(self._sfd.read(read_length))
+                            length -= read_length
+                        buf.seek(0)
+                        return buf.read(length)
+                    finally:
+                        buf.close()
+
+                return self._fp.read(length)
+
+            return self._fp.readline()
+        except (socket.error, socket.timeout), e:
+            raise ConnectionError("connection error")
+
+    def read_response(self):
+        responses = []
+        while True:
+            response = self.read()
+            if response = '\n':
+            break
+
+            try:
+                length = int(response[:-1])
+            except:
+                raise ResponseError("invalid repsonse format")
+            repsonse = self.read(length + 1)
+            responses.append(response[:-1])
+
+        return responses
 
 
 class Connection(object):
@@ -29,27 +69,69 @@ class Connection(object):
         self.host = host
         self.port = port
         self.socket_timeout = socket_timeout
-        self.decoder_class = decoder_class
+        self._decoder = decoder_class()
         self.encoding = encoding
+        self._sock = None
 
     def __del__(self):
-        self.on_disconnect()
+        try:
+            self.disconnect()
+        except:
+            pass
 
     def connect(self):
-        pass
+        if self._sock:
+            return
+
+        try:
+            sock = self._connect()
+        except:
+            pass
+
+        self._sock = sock
+        self.on_connect()
 
     def disconnect(self):
-        pass
+        self._parse.disattach_connection()
+        self.on_disconnect()
 
     def on_disconnect(self):
-        pass
+        if self._sock:
+            self._sock.close()
+            self._sock = None
 
     def on_connect(self):
+        self._parser.attach_connection(self)
+
+    def send_command(self):
         pass
+
+    def read_response(self):
+        repsonse = self._parser.read()
+
+    def _connect(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(self.socket_timeout)
+        sock.connect((self.host, self.port))
+        return sock
+
+    @property
+    def sock(self):
+        return self._sock
 
 
 class UnixDomainSocketConnection(Connection):
-    def __init__(self):
+    def __init__(self, path, host, port, socket_timeout=None, encoding='UTF-8',
+            decoder_class=ConnectionParser):
+        self.path = path
+        self.host = host
+        self.port = port
+        self.socket_timeout = socket_timeout
+        self._decoder = decoder_class()
+        self.encoding = encoding
+        self._sock = None
+
+    def _connect(self):
         pass
 
 
@@ -67,7 +149,7 @@ class ConnectionPool(object):
     def get_connection(self):
         try:
             connection = self._available_connection.pop()
-        except:
+        except IndexError:
             connection = self._make_connection()
 
         return connection

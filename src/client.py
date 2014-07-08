@@ -14,6 +14,10 @@ class SSDB(StrictSSDB):
     pass
 
 
+class SSDBBatch(object):
+    pass
+
+
 def from_url(url):
     """\brief 从url中解析出链接需要的各个参数，返回一个SSDB链接
     """

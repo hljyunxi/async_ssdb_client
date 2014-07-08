@@ -14,3 +14,6 @@ class InvalidResponse(SSDBError):
 
 class DataError(SSDBError):
     pass
+
+class ResponseError(SSDBError):
+    pass
