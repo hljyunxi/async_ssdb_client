@@ -4,3 +4,11 @@
 
 
 #公用utils
+
+def dict_merge(*dicts):
+    merged_dicts = {}
+    [merged_dicts.update(d) for d in dicts]
+    return merged_dicts
+
+
+
