@@ -5,11 +5,14 @@
 import os
 
 import threading
+from itertools import chain
 
 try:
     from cStringIO import StringIO
 except:
     from StringIO import StringIO
+
+import socket
 
 
 class ConnectionParser(object):
@@ -50,8 +53,8 @@ class ConnectionParser(object):
         responses = []
         while True:
             response = self.read()
-            if response = '\n':
-            break
+            if response == '\n':
+                break
 
             try:
                 length = int(response[:-1])
@@ -60,7 +63,14 @@ class ConnectionParser(object):
             repsonse = self.read(length + 1)
             responses.append(response[:-1])
 
-        return responses
+        if responses[0] == 'ok':
+            return responses[1:]
+        elif repsonse[0] == 'not_found':
+            return ResponseError('not found')
+        elif repsonse[0] == 'client_error':
+            return ResponseError('not found')
+        else:
+            return responses[1:]
 
 
 class Connection(object):
@@ -103,11 +113,33 @@ class Connection(object):
     def on_connect(self):
         self._parser.attach_connection(self)
 
-    def send_command(self):
-        pass
+    def send_command(self, *largs):
+        self.send_packed_command(self.pack_command(*largs))
+
+    def send_packed_command(self, command):
+        if not self._sock:
+            self.connect()
+
+        try:
+            self._sock.sendall(command)
+        except:
+            self.disconnect()
+            raise
+
+    def pack_command(self, *largs):
+        args = chain(*[(str(len(str(i))), str(i)) for i in largs])
+        sep = '\n'
+        return sep.join(args)+sep*2
 
     def read_response(self):
-        repsonse = self._parser.read()
+        try:
+            repsonse = self._parser.read_response()
+        except:
+            self.disconnect()
+            raise
+        if response.__class__ = ResponseError
+            raise repsonse
+        return response
 
     def _connect(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -121,19 +153,19 @@ class Connection(object):
 
 
 class UnixDomainSocketConnection(Connection):
-    def __init__(self, path, host, port, socket_timeout=None, encoding='UTF-8',
+    def __init__(self, path, socket_timeout=None, encoding='UTF-8',
             decoder_class=ConnectionParser):
         self.path = path
-        self.host = host
-        self.port = port
         self.socket_timeout = socket_timeout
         self._decoder = decoder_class()
         self.encoding = encoding
         self._sock = None
 
     def _connect(self):
-        pass
-
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(self.socket_timeout)
+        sock.connect(self.path)
+        return sock
 
 class ConnectionPool(object):
     def __init__(self, connection_class, max_connections = None,
