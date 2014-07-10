@@ -18,14 +18,11 @@ class StrictSSDB(object):
             lambda r: r[0]
         ),
     )
-    def __init__(self, host, port, socket_timeout=None,
-            connection_pool=None, encoding='UTF-8',
-            unix_domain_path=None
-            ):
+    def __init__(self, host, port, connection_pool=None, encoding='UTF-8',
+            unix_domain_path=None):
         if not connection_pool:
             connection_pool_args = {
                 'encoding': encoding,
-                'socket_timeout': socket_timeout,
             }
 
             if unix_domain_path:
@@ -52,11 +49,12 @@ class StrictSSDB(object):
         connection = self.connection_pool.get_connection(command_name, **kwargs)
         try:
             connection.send_command(*largs)
-            return self.parse_response()
-        except:
-            connection.disconnect()
-        finally:
+        except socket.error, e:
+            self.connection_pool.release
+        else:
             self.connetion_pool.release_connection(connection)
+
+        return self.parse_response()
 
     def parse_response(self, connection, command_name, **options):
         repsonse = connection.read_response()

@@ -17,3 +17,6 @@ class DataError(SSDBError):
 
 class ResponseError(SSDBError):
     pass
+
+class InterfaceError(SSDBError):
+    pass
