@@ -56,7 +56,8 @@ class StrictSSDB(object):
 
         return self.parse_response()
 
-    def parse_response(self, connection, command_name, **options):
+    def _handle_response(self, response, command_name=None, future=None,
+            error=None, origin_callback=None):
         repsonse = connection.read_response()
         if command_name in self.response_callback:
             return self.response_callback[command_name](repsonse, **options)

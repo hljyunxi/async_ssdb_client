@@ -24,6 +24,7 @@ class Connection(object):
         self._stream = None
         self._request_callback = None
         self._alive = False
+        self._tmp_response = []
 
     def __del__(self):
         try:
@@ -104,12 +105,19 @@ class Connection(object):
     def _connect_callback(self):
         pass
 
-    def _close_callback(self):
-        self._alive = False
-        self.pool.release_connection(self)
 
     def _parse_response(self, data):
-        pass
+        if data == '\n' or data == '\r\n':
+            callback = self._request_callback
+            self._request_callback = None
+
+            repsonse = Response(self._tmp_response[0], self._tmp_response[1:])
+            self._tmp_response = []
+
+            callback(repsonse)
+        else:
+            self._tmp_response.append(data[:-2] if data.endswith('\r\n') else data[:-1])
+            self.io_stream.read_until_regex('\r?\n', self._parse_response)
 
 
 class UnixDomainSocketConnection(Connection):
