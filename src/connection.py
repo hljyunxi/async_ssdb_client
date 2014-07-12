@@ -30,6 +30,7 @@ class Connection(object):
         self._stream = None
         self._request_callback = None
         self._alive = False
+        self._command_name = None
         self._tmp_response = []
 
     def __del__(self):
@@ -63,6 +64,8 @@ class Connection(object):
             if callback:
                 callback(None, ConnectionError('connection error'))
         finally:
+            self._tmp_response = []
+            self._command_name = None
             self._active = False
 
     def close(self):
@@ -74,19 +77,21 @@ class Connection(object):
                 callback(None, ConnectionError('connection close'))
         finally:
             self._active = False
+            self._command_name = None
+            self._tmp_response = []
             self._io_stream.close()
 
 
     def send_command(self, command_name, *largs):
-        tobe_pack_command = list(largs)
-        tobe_pack_command.insert(0, command_name)
-        self.send_packed_command(self.pack_command(*tobe_pack_command))
-
-    def send_packed_command(self, command):
         if not self._alive:
             self._connect()
 
-        self._io_stream.write(command)
+        self._command_name = command_name
+
+        tobe_pack_command = list(largs)
+        tobe_pack_command.insert(0, command_name)
+        self._io_stream.write(self.pack_command(*tobe_pack_command))
+
         if self._request_callback:
             self._io_stream.read_until("\n", self._parse_line_length)
 
@@ -107,7 +112,7 @@ class Connection(object):
 
     def _parse_line_length(self, data):
         if data == '\n':
-            response = Response(self._tmp_response[0], self._tmp_response[1:])
+            response = Response(self._command_name, self._tmp_response[0], self._tmp_response[1:])
             self._tmp_response = []
             self._invoke_response_callback(response)
         else:
@@ -136,6 +141,7 @@ class UnixDomainSocketConnection(Connection):
         self._stream = None
         self._request_callback = None
         self._alive = False
+        self._command_name = None
         self._tmp_response = []
 
     def _internal_connect(self):

@@ -43,5 +43,4 @@ class ConnectionPool(object):
     def disconnect(self):
         for connection in chain(self._in_use_connections,\
                 self._availabe_connections):
-
             connection.disconnect()

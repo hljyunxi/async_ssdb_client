@@ -5,22 +5,11 @@
 from urlparse import urlparse
 
 from connection import Connection, UnixDomainSocketConnection
-from utils import dict_merge, list_to_dict
 from functools import partial
 from connection_pool import ConnectionPool
 from future import AsyncResult
 
 class StrictSSDB(object):
-    RESPONSE_CALLBACK = dict_merge(
-        list_to_dict(
-            'set',
-            lambda r: bool(int(r[0]))
-        ),
-        list_to_dict(
-            'get',
-            lambda r: r[0]
-        ),
-    )
     def __init__(self, host='127.0.0.1', port=8888, connection_pool=None,
             encoding='UTF-8', unix_domain_path=None):
         if not connection_pool:
@@ -42,10 +31,6 @@ class StrictSSDB(object):
             connection_pool = ConnectionPool(**connection_pool_args)
 
         self.connection_pool = connection_pool
-        self.response_callback = self.__class__.RESPONSE_CALLBACK.copy()
-
-    def set_response_callback(self, command, callback):
-        self.response_callback[command] = callback
 
     def execute_command(self, command_name, *largs, **kwargs):
         connection = self.connection_pool.get_connection(command_name, **kwargs)
@@ -68,6 +53,7 @@ class StrictSSDB(object):
         if response:
             async_result.set(value=response)
         elif error:
+            connection.close()
             async_result.set_exception(error)
 
         self.connection_pool.release_connection(connection)
@@ -96,6 +82,3 @@ class SSDB(StrictSSDB):
 
     def batch(self):
         pass
-
-class SSDBBatch(object):
-    pass
