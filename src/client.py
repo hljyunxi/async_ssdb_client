@@ -6,9 +6,11 @@ from urlparse import urlparse
 
 from connection import Connection, UnixDomainSocketConnection
 from utils import dict_merge, list_to_dict
+from functools import partial
+from connection_pool import ConnectionPool
 
 class StrictSSDB(object):
-    RESPONSE_CALLBACK = utils.dict_merge(
+    RESPONSE_CALLBACK = dict_merge(
         list_to_dict(
             'set',
             lambda r: bool(int(r[0]))
@@ -18,8 +20,8 @@ class StrictSSDB(object):
             lambda r: r[0]
         ),
     )
-    def __init__(self, host, port, connection_pool=None, encoding='UTF-8',
-            unix_domain_path=None):
+    def __init__(self, host='127.0.0.1', port=8888, connection_pool=None,
+            encoding='UTF-8', unix_domain_path=None):
         if not connection_pool:
             connection_pool_args = {
                 'encoding': encoding,
@@ -44,24 +46,22 @@ class StrictSSDB(object):
     def set_response_callback(self, command, callback):
         self.response_callback[command] = callback
 
-    def execute_command(self, *largs, **kwargs):
-        command_name = largs[0]
+    def execute_command(self, command_name, *largs, **kwargs):
         connection = self.connection_pool.get_connection(command_name, **kwargs)
+        future = Future()
         try:
-            connection.send_command(*largs)
-        except socket.error, e:
-            self.connection_pool.release
-        else:
-            self.connetion_pool.release_connection(connection)
+            connection.set_requst_callback(partial(self._handle_response,
+                future=future, command_name=command_name))
+            connection.send_command(command_name, *largs)
+        except IOError, e:
+            connection.close()
 
-        return self.parse_response()
+        return future
 
     def _handle_response(self, response, command_name=None, future=None,
-            error=None, origin_callback=None):
-        repsonse = connection.read_response()
-        if command_name in self.response_callback:
-            return self.response_callback[command_name](repsonse, **options)
-        return response
+            error=None):
+        future.set_response(response)
+        self.connection_pool.release_connection(conncetion)
 
 
 class SSDB(StrictSSDB):

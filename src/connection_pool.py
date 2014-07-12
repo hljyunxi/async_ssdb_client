@@ -8,7 +8,7 @@ class ConnectionPool(object):
     def __init__(self, connection_class, max_connections = None,
             **connection_class_kwargs):
         self.connection_class = connection_class
-        self.connection_class_kwargs = connection_kwargs
+        self.connection_class_kwargs = connection_class_kwargs
         self.max_connections = max_connections if max_connections else (2**32 - 1)
         self._created_connections = 0
         self._available_connections = set()
@@ -28,7 +28,7 @@ class ConnectionPool(object):
             if self._created_connections >= self.max_connections:
                 raise ConnectionError('too many connections')
 
-            connection = self.connection_class(self, **self.conncetion_class_kwargs)
+            connection = self.connection_class(**self.conncetion_class_kwargs)
             self._created_connections += 1
             self._in_use_connections.add(connection)
 

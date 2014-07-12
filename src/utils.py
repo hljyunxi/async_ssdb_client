@@ -12,4 +12,4 @@ def dict_merge(*dicts):
 
 
 def list_to_dict(list_str, callback):
-    return dict.from_keys(list_str.split(), callback)
+    return dict.fromkeys(list_str.split(), callback)
