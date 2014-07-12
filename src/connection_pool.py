@@ -15,10 +15,10 @@ class ConnectionPool(object):
         self._in_use_connections = set()
         self._connection_lock = Lock()
 
-    def get_connection(self):
+    def get_connection(self, command_name):
         try:
-            connection = self._available_connection.pop()
-        except IndexError:
+            connection = self._available_connections.pop()
+        except:
             connection = self._make_connection()
 
         return connection
@@ -28,7 +28,7 @@ class ConnectionPool(object):
             if self._created_connections >= self.max_connections:
                 raise ConnectionError('too many connections')
 
-            connection = self.connection_class(**self.conncetion_class_kwargs)
+            connection = self.connection_class(**self.connection_class_kwargs)
             self._created_connections += 1
             self._in_use_connections.add(connection)
 
@@ -38,7 +38,7 @@ class ConnectionPool(object):
         with self._connection_lock:
             self._in_use_connections.remove(connection)
             self._available_connections.add(connection)
-            self._create_connections -= 1
+            self._created_connections -= 1
 
     def disconnect(self):
         for connection in chain(self._in_use_connections,\

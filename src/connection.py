@@ -14,6 +14,9 @@ except:
 
 import socket
 
+from iostream import IOStream
+from response import Response
+
 
 class Connection(object):
     """\biref ssdb连接的封装
@@ -35,7 +38,7 @@ class Connection(object):
         except:
             pass
 
-    def set_request_callback(self, rquest_callback):
+    def set_request_callback(self, request_callback):
         assert not self._request_callback, "already in use, _request_callback is not None"
         self._request_callback = request_callback
 
@@ -75,7 +78,9 @@ class Connection(object):
 
 
     def send_command(self, command_name, *largs):
-        self.send_packed_command(self.pack_command(*largs))
+        tobe_pack_command = list(largs)
+        tobe_pack_command.insert(0, command_name)
+        self.send_packed_command(self.pack_command(*tobe_pack_command))
 
     def send_packed_command(self, command):
         if not self._alive:
@@ -83,7 +88,7 @@ class Connection(object):
 
         self._io_stream.write(command)
         if self._request_callback:
-            self._io_stream.read_until_regex(r"\r\n", self._parse_response)
+            self._io_stream.read_until_regex(r"\r?\n", self._parse_response)
 
 
     def pack_command(self, *largs):
@@ -95,13 +100,14 @@ class Connection(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._io_stream = IOStream(sock)
         self._io_stream.connect((self.host, self.port), self._connect_callback)
-        self._io_sream.set_close_callback(self._socket_close_callback)
+        self._io_stream.set_close_callback(self._socket_close_callback)
 
     def _connect_callback(self):
         pass
 
 
     def _parse_response(self, data):
+        print data
         if data == '\n' or data == '\r\n':
             callback = self._request_callback
             self._request_callback = None
@@ -112,15 +118,17 @@ class Connection(object):
             callback(repsonse)
         else:
             self._tmp_response.append(data[:-2] if data.endswith('\r\n') else data[:-1])
-            self.io_stream.read_until_regex('\r?\n', self._parse_response)
+            self._io_stream.read_until_regex('\r?\n', self._parse_response)
 
 
 class UnixDomainSocketConnection(Connection):
     def __init__(self, path='', encoding='UTF-8'):
         self.path = path
-        self._decoder = decoder_class()
         self.encoding = encoding
-        self._sock = None
+        self._stream = None
+        self._request_callback = None
+        self._alive = False
+        self._tmp_response = []
 
     def _internal_connect(self):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

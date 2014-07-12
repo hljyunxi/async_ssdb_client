@@ -25,9 +25,9 @@ import socket
 import sys
 import re
 
-from tornado import ioloop
-from tornado import stack_context
-from tornado.util import b, bytes_type
+import ioloop
+import stack_context
+from utils import b, bytes_type
 
 try:
     import ssl # Python 2.6+
@@ -39,7 +39,7 @@ class IOStream(object):
 
     We support a non-blocking ``write()`` and a family of ``read_*()`` methods.
     All of the methods take callbacks (since writing and reading are
-    non-blocking and asynchronous). 
+    non-blocking and asynchronous).
 
     The socket parameter may either be connected or unconnected.  For
     server operations the socket is the result of calling socket.accept().
@@ -138,7 +138,7 @@ class IOStream(object):
             if self._read_to_buffer() == 0:
                 break
         self._add_io_state(self.io_loop.READ)
-        
+
     def read_until(self, delimiter, callback):
         """Call callback when we read the given delimiter."""
         assert not self._read_callback, "Already reading"

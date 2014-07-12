@@ -8,6 +8,7 @@ from connection import Connection, UnixDomainSocketConnection
 from utils import dict_merge, list_to_dict
 from functools import partial
 from connection_pool import ConnectionPool
+from future import AsyncResult
 
 class StrictSSDB(object):
     RESPONSE_CALLBACK = dict_merge(
@@ -30,13 +31,13 @@ class StrictSSDB(object):
             if unix_domain_path:
                 connection_pool_args.update({
                     'path': unix_domain_path,
-                    'connection_class': Connection,
+                    'connection_class': UnixDomainSocketConnection,
                 })
             else:
                 connection_pool_args.update({
                     'host': host,
                     'port': port,
-                    'connection_class': UnixDomainSocketConnection,
+                    'connection_class': Connection,
                 })
             connection_pool = ConnectionPool(**connection_pool_args)
 
@@ -48,20 +49,25 @@ class StrictSSDB(object):
 
     def execute_command(self, command_name, *largs, **kwargs):
         connection = self.connection_pool.get_connection(command_name, **kwargs)
-        future = Future()
+        async_result = AsyncResult()
         try:
-            connection.set_requst_callback(partial(self._handle_response,
-                future=future, command_name=command_name))
+            connection.set_request_callback(partial(self._handle_response,
+                async_result=async_result, command_name=command_name,
+                connection=connection))
             connection.send_command(command_name, *largs)
         except IOError, e:
             connection.close()
 
-        return future
+        return async_result
 
-    def _handle_response(self, response, command_name=None, future=None,
-            error=None):
-        future.set_response(response)
-        self.connection_pool.release_connection(conncetion)
+    def _handle_response(self, response, command_name=None, async_result=None,
+            error=None, connection=None):
+        if response:
+            async_result.set(value=response)
+        elif error:
+            async_result.set_exception(error)
+
+        self.connection_pool.release_connection(connection)
 
 
 class SSDB(StrictSSDB):

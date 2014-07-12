@@ -18,3 +18,5 @@ class DataError(SSDBError):
 class ResponseError(SSDBError):
     pass
 
+class TimeoutError(SSDBError):
+    pass

@@ -2,7 +2,7 @@
 #coding: utf8
 #Author: chenyunyun<hljyunxi@gmail.com>
 
-class SSDBResponse(object):
+class Response(object):
     def __init__(self, code, body=None):
         self.code = code
         self.body = body
@@ -14,4 +14,5 @@ class SSDBResponse(object):
     @property
     def not_found(self):
         return self.code == 'not_found'
+
 

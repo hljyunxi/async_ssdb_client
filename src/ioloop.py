@@ -39,14 +39,14 @@ import threading
 import time
 import traceback
 
-from tornado import stack_context
+import stack_context
 
 try:
     import signal
 except ImportError:
     signal = None
 
-from tornado.platform.auto import set_close_exec, Waker
+from platform.auto import set_close_exec, Waker
 
 
 class IOLoop(object):
