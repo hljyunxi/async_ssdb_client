@@ -6,6 +6,7 @@ class Response(object):
     def __init__(self, code, body=None):
         self.code = code
         self.body = body
+        print code, body
 
     @property
     def ok(self):

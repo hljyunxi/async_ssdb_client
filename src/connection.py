@@ -88,7 +88,7 @@ class Connection(object):
 
         self._io_stream.write(command)
         if self._request_callback:
-            self._io_stream.read_until_regex(r"\r?\n", self._parse_response)
+            self._io_stream.read_until("\n", self._parse_line_length)
 
 
     def pack_command(self, *largs):
@@ -105,20 +105,28 @@ class Connection(object):
     def _connect_callback(self):
         pass
 
-
-    def _parse_response(self, data):
-        print data
-        if data == '\n' or data == '\r\n':
-            callback = self._request_callback
-            self._request_callback = None
-
-            repsonse = Response(self._tmp_response[0], self._tmp_response[1:])
+    def _parse_line_length(self, data):
+        if data == '\n':
+            response = Response(self._tmp_response[0], self._tmp_response[1:])
             self._tmp_response = []
-
-            callback(repsonse)
+            self._invoke_response_callback(response)
         else:
-            self._tmp_response.append(data[:-2] if data.endswith('\r\n') else data[:-1])
-            self._io_stream.read_until_regex('\r?\n', self._parse_response)
+            try:
+                line_length = int(data[:-1])
+            except Exception, e:
+                self._tmp_response = []
+                self._invoke_repsonse_callback(None, error=e)
+
+            self._io_stream.read_bytes(line_length + 1, self._parse_line_content)
+
+    def _parse_line_content(self, data):
+        self._tmp_response.append(data[:-1])
+        self._io_stream.read_until('\n', self._parse_line_length)
+
+    def _invoke_response_callback(self, response, error=None):
+        callback = self._request_callback
+        self._request_callback = None
+        callback(response, error=error)
 
 
 class UnixDomainSocketConnection(Connection):

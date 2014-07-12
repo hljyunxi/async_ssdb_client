@@ -32,7 +32,7 @@ class AsyncResult(object):
         with self._condition:
             self.value = value
             self._exception = None
-            print value
+            print 'set async_result: %s' % value
             self._condition.notify_all()
 
     def set_exception(self, exception):

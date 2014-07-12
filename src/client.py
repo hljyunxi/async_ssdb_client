@@ -50,13 +50,16 @@ class StrictSSDB(object):
     def execute_command(self, command_name, *largs, **kwargs):
         connection = self.connection_pool.get_connection(command_name, **kwargs)
         async_result = AsyncResult()
+        connection.set_request_callback(partial(self._handle_response,
+            async_result=async_result, command_name=command_name,
+            connection=connection))
+
         try:
-            connection.set_request_callback(partial(self._handle_response,
-                async_result=async_result, command_name=command_name,
-                connection=connection))
             connection.send_command(command_name, *largs)
-        except IOError, e:
+        except:
             connection.close()
+            self.connection_pool.release_connection(connection)
+            raise
 
         return async_result
 
